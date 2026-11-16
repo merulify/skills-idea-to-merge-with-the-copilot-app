@@ -3,6 +3,7 @@ export const BOOKMARKS_STORAGE_KEY = 'mona-bookmarks';
 export type Bookmark = {
   url: string;
   slug: string;
+  title?: string;
 };
 
 const BASE62_ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -24,6 +25,15 @@ export function normalizeBookmarkUrl(rawInput: string): string | null {
   }
 }
 
+export function normalizeBookmarkTitle(rawInput: string | null | undefined): string | undefined {
+  if (typeof rawInput !== 'string') {
+    return undefined;
+  }
+
+  const trimmed = rawInput.trim();
+  return trimmed ? trimmed : undefined;
+}
+
 function isBookmarkRecord(value: unknown): value is Bookmark {
   if (!value || typeof value !== 'object') {
     return false;
@@ -34,7 +44,8 @@ function isBookmarkRecord(value: unknown): value is Bookmark {
     typeof candidate.url === 'string' &&
     typeof candidate.slug === 'string' &&
     candidate.slug.length > 0 &&
-    BOOKMARK_SLUG_PATTERN.test(candidate.slug)
+    BOOKMARK_SLUG_PATTERN.test(candidate.slug) &&
+    (typeof candidate.title === 'undefined' || typeof candidate.title === 'string')
   );
 }
 
@@ -60,7 +71,12 @@ export function parseStoredBookmarks(storedValue: string | null): Bookmark[] {
         continue;
       }
 
-      bookmarks.push({ url: normalizedUrl, slug: entry.slug });
+      const normalizedTitle = normalizeBookmarkTitle(entry.title);
+      bookmarks.push({
+        url: normalizedUrl,
+        slug: entry.slug,
+        ...(normalizedTitle ? { title: normalizedTitle } : {})
+      });
     }
     return bookmarks;
   } catch {
@@ -72,15 +88,38 @@ export function formatBookmarkEntry(bookmark: Bookmark): string {
   return `${bookmark.url} :: ${bookmark.slug}`;
 }
 
-export function updateBookmarkUrl(bookmarks: Bookmark[], slug: string, nextUrl: string): Bookmark[] {
+export function updateBookmarkUrl(
+  bookmarks: Bookmark[],
+  slug: string,
+  nextUrl: string,
+  nextTitle?: string | null
+): Bookmark[] {
   const normalizedUrl = normalizeBookmarkUrl(nextUrl);
   if (!normalizedUrl) {
     return bookmarks;
   }
 
+  const normalizedTitle = normalizeBookmarkTitle(nextTitle);
+  const hasTitleUpdate = arguments.length >= 4;
+
   return bookmarks.map((bookmark) =>
-    bookmark.slug === slug ? { ...bookmark, url: normalizedUrl } : bookmark
+    bookmark.slug === slug
+      ? {
+          ...bookmark,
+          url: normalizedUrl,
+          ...(hasTitleUpdate ? { title: normalizedTitle } : {})
+        }
+      : bookmark
   );
+}
+
+export function updateBookmark(
+  bookmarks: Bookmark[],
+  slug: string,
+  nextUrl: string,
+  nextTitle?: string | null
+): Bookmark[] {
+  return updateBookmarkUrl(bookmarks, slug, nextUrl, nextTitle);
 }
 
 function encodeBase62(value: number): string {
