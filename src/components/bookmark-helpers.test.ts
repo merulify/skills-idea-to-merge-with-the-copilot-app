@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { formatBookmarkEntry, normalizeBookmarkUrl, parseStoredBookmarks } from './bookmark-helpers';
+import {
+  formatBookmarkEntry,
+  normalizeBookmarkUrl,
+  parseStoredBookmarks,
+  updateBookmarkUrl
+} from './bookmark-helpers';
 
 describe('normalizeBookmarkUrl', () => {
   it('normalizes URLs with and without https:// to the same saved value', () => {
@@ -37,6 +42,26 @@ describe('parseStoredBookmarks', () => {
     ]);
 
     expect(parseStoredBookmarks(storedValue)).toEqual([{ url: 'https://www.example.com/', slug: 'mona-7fk2' }]);
+  });
+});
+
+describe('updateBookmarkUrl', () => {
+  it('updates an existing bookmark URL without changing its slug', () => {
+    const bookmarks = [
+      { url: 'https://www.example.com/old', slug: 'mona-7fk2' },
+      { url: 'https://example.org/keep', slug: 'mona-9ab1' }
+    ];
+
+    expect(updateBookmarkUrl(bookmarks, 'mona-7fk2', 'www.example.com/new')).toEqual([
+      { url: 'https://www.example.com/new', slug: 'mona-7fk2' },
+      { url: 'https://example.org/keep', slug: 'mona-9ab1' }
+    ]);
+  });
+
+  it('returns the original bookmarks when the new URL is invalid', () => {
+    const bookmarks = [{ url: 'https://www.example.com/', slug: 'mona-7fk2' }];
+
+    expect(updateBookmarkUrl(bookmarks, 'mona-7fk2', 'not a URL')).toEqual(bookmarks);
   });
 });
 
