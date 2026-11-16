@@ -72,6 +72,17 @@ export function formatBookmarkEntry(bookmark: Bookmark): string {
   return `${bookmark.url} :: ${bookmark.slug}`;
 }
 
+export function updateBookmarkUrl(bookmarks: Bookmark[], slug: string, nextUrl: string): Bookmark[] {
+  const normalizedUrl = normalizeBookmarkUrl(nextUrl);
+  if (!normalizedUrl) {
+    return bookmarks;
+  }
+
+  return bookmarks.map((bookmark) =>
+    bookmark.slug === slug ? { ...bookmark, url: normalizedUrl } : bookmark
+  );
+}
+
 function encodeBase62(value: number): string {
   if (!Number.isFinite(value) || value <= 0) {
     return BASE62_ALPHABET[0];

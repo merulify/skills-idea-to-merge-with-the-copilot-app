@@ -23,7 +23,8 @@
       required
     />
   </div>
-  <button type="submit">Add bookmark</button>
+  <button id="submit-bookmark" type="submit">Add bookmark</button>
+  <button id="cancel-edit" type="button" hidden>Cancel edit</button>
 </form>
 
 <p class="hint">Paste a URL and select <strong>Add bookmark</strong> to generate its short <code>mona-</code> slug.</p>
@@ -45,15 +46,21 @@
     createBookmarkSlug,
     formatBookmarkEntry,
     normalizeBookmarkUrl,
-    parseStoredBookmarks
+    parseStoredBookmarks,
+    type Bookmark,
+    updateBookmarkUrl
   } from './bookmark-helpers';
 
   const form = document.getElementById('add-bookmark');
   const urlInput = document.getElementById('url');
+  const submitButton = document.getElementById('submit-bookmark');
+  const cancelEditButton = document.getElementById('cancel-edit');
   const bookmarkList = document.getElementById('bookmark-list');
   const emptyState = document.getElementById('empty-state');
   const listHeader = document.getElementById('list-header');
   const clearAllButton = document.getElementById('clear-all');
+
+  let editingSlug: string | null = null;
 
   const bookmarks = loadBookmarks();
   renderBookmarks(bookmarks);
@@ -73,16 +80,26 @@
       return;
     }
 
-    const usedSlugs = new Set(bookmarks.map((bookmark) => bookmark.slug));
-    let slug = createBookmarkSlug();
-    while (usedSlugs.has(slug)) {
-      slug = createBookmarkSlug();
+    if (editingSlug) {
+      const nextBookmarks = updateBookmarkUrl(bookmarks, editingSlug, normalizedUrl);
+      bookmarks.splice(0, bookmarks.length, ...nextBookmarks);
+    } else {
+      const usedSlugs = new Set(bookmarks.map((bookmark) => bookmark.slug));
+      let slug = createBookmarkSlug();
+      while (usedSlugs.has(slug)) {
+        slug = createBookmarkSlug();
+      }
+
+      bookmarks.unshift({ url: normalizedUrl, slug });
     }
 
-    bookmarks.unshift({ url: normalizedUrl, slug });
     saveBookmarks(bookmarks);
     renderBookmarks(bookmarks);
-    form.reset();
+    resetFormState();
+  });
+
+  cancelEditButton?.addEventListener('click', () => {
+    resetFormState();
   });
 
   clearAllButton?.addEventListener('click', () => {
@@ -93,7 +110,37 @@
     bookmarks.length = 0;
     saveBookmarks(bookmarks);
     renderBookmarks(bookmarks);
+    resetFormState();
   });
+
+  function resetFormState() {
+    editingSlug = null;
+    form?.reset();
+
+    if (submitButton instanceof HTMLButtonElement) {
+      submitButton.textContent = 'Add bookmark';
+    }
+    if (cancelEditButton instanceof HTMLButtonElement) {
+      cancelEditButton.hidden = true;
+    }
+  }
+
+  function beginEditingBookmark(bookmark: Bookmark) {
+    if (!(urlInput instanceof HTMLInputElement)) {
+      return;
+    }
+
+    editingSlug = bookmark.slug;
+    urlInput.value = bookmark.url;
+    urlInput.focus();
+
+    if (submitButton instanceof HTMLButtonElement) {
+      submitButton.textContent = 'Save changes';
+    }
+    if (cancelEditButton instanceof HTMLButtonElement) {
+      cancelEditButton.hidden = false;
+    }
+  }
 
   function loadBookmarks() {
     try {
@@ -138,6 +185,15 @@
       slug.textContent = bookmark.slug;
       slug.setAttribute('aria-label', formatBookmarkEntry(bookmark));
 
+      const editButton = document.createElement('button');
+      editButton.type = 'button';
+      editButton.className = 'edit';
+      editButton.textContent = 'Edit';
+      editButton.setAttribute('aria-label', `Edit ${bookmark.slug}`);
+      editButton.addEventListener('click', () => {
+        beginEditingBookmark(bookmark);
+      });
+
       const copyButton = document.createElement('button');
       copyButton.type = 'button';
       copyButton.className = 'copy';
@@ -155,7 +211,7 @@
         }
       });
 
-      row.append(urlLink, separator, slug, copyButton);
+      row.append(urlLink, separator, slug, editButton, copyButton);
       bookmarkList.append(row);
     }
 
