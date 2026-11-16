@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatBookmarkEntry,
+  normalizeBookmarkTitle,
   normalizeBookmarkUrl,
   parseStoredBookmarks,
   updateBookmarkUrl
@@ -13,6 +14,13 @@ describe('normalizeBookmarkUrl', () => {
 
     expect(withScheme).toBe('https://www.example.com/docs');
     expect(withoutScheme).toBe(withScheme);
+  });
+});
+
+describe('normalizeBookmarkTitle', () => {
+  it('trims and keeps only meaningful titles', () => {
+    expect(normalizeBookmarkTitle('  Example docs  ')).toBe('Example docs');
+    expect(normalizeBookmarkTitle('   ')).toBeUndefined();
   });
 });
 
@@ -34,14 +42,16 @@ describe('parseStoredBookmarks', () => {
 
   it('drops malformed entries and keeps only validated bookmarks', () => {
     const storedValue = JSON.stringify([
-      { url: 'www.example.com', slug: 'mona-7fk2' },
+      { url: 'www.example.com', slug: 'mona-7fk2', title: 'Example site' },
       { url: 'not a url', slug: 'mona-1a2b' },
       { url: 'https://example.net', slug: 'mona-abc' },
       { url: 'https://example.com', slug: 'invalid-slug' },
       { url: 123, slug: 'mona-0000' }
     ]);
 
-    expect(parseStoredBookmarks(storedValue)).toEqual([{ url: 'https://www.example.com/', slug: 'mona-7fk2' }]);
+    expect(parseStoredBookmarks(storedValue)).toEqual([
+      { url: 'https://www.example.com/', slug: 'mona-7fk2', title: 'Example site' }
+    ]);
   });
 });
 
@@ -55,6 +65,22 @@ describe('updateBookmarkUrl', () => {
     expect(updateBookmarkUrl(bookmarks, 'mona-7fk2', 'www.example.com/new')).toEqual([
       { url: 'https://www.example.com/new', slug: 'mona-7fk2' },
       { url: 'https://example.org/keep', slug: 'mona-9ab1' }
+    ]);
+  });
+
+  it('updates the title and URL together while preserving the slug', () => {
+    const bookmarks = [{ url: 'https://www.example.com/old', slug: 'mona-7fk2', title: 'Old title' }];
+
+    expect(updateBookmarkUrl(bookmarks, 'mona-7fk2', 'www.example.com/new', '  New title  ')).toEqual([
+      { url: 'https://www.example.com/new', slug: 'mona-7fk2', title: 'New title' }
+    ]);
+  });
+
+  it('clears the title when the user removes it during edit', () => {
+    const bookmarks = [{ url: 'https://www.example.com/old', slug: 'mona-7fk2', title: 'Old title' }];
+
+    expect(updateBookmarkUrl(bookmarks, 'mona-7fk2', 'https://www.example.com/new', '')).toEqual([
+      { url: 'https://www.example.com/new', slug: 'mona-7fk2', title: undefined }
     ]);
   });
 

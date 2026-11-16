@@ -11,6 +11,18 @@
 ---
 <form id="add-bookmark">
   <div class="field">
+    <label for="title">Bookmark title</label>
+    <input
+      id="title"
+      name="title"
+      type="text"
+      maxlength="120"
+      autocomplete="off"
+      spellcheck="false"
+      placeholder="Example"
+    />
+  </div>
+  <div class="field">
     <label for="url">Link to save</label>
     <input
       id="url"
@@ -45,6 +57,7 @@
     BOOKMARKS_STORAGE_KEY,
     createBookmarkSlug,
     formatBookmarkEntry,
+    normalizeBookmarkTitle,
     normalizeBookmarkUrl,
     parseStoredBookmarks,
     type Bookmark,
@@ -52,6 +65,7 @@
   } from './bookmark-helpers';
 
   const form = document.getElementById('add-bookmark');
+  const titleInput = document.getElementById('title');
   const urlInput = document.getElementById('url');
   const submitButton = document.getElementById('submit-bookmark');
   const cancelEditButton = document.getElementById('cancel-edit');
@@ -80,8 +94,17 @@
       return;
     }
 
+    const normalizedTitle = normalizeBookmarkTitle(
+      titleInput instanceof HTMLInputElement ? titleInput.value : ''
+    );
+
     if (editingSlug) {
-      const nextBookmarks = updateBookmarkUrl(bookmarks, editingSlug, normalizedUrl);
+      const nextBookmarks = updateBookmarkUrl(
+        bookmarks,
+        editingSlug,
+        normalizedUrl,
+        normalizedTitle
+      );
       bookmarks.splice(0, bookmarks.length, ...nextBookmarks);
     } else {
       const usedSlugs = new Set(bookmarks.map((bookmark) => bookmark.slug));
@@ -90,7 +113,11 @@
         slug = createBookmarkSlug();
       }
 
-      bookmarks.unshift({ url: normalizedUrl, slug });
+      bookmarks.unshift({
+        url: normalizedUrl,
+        slug,
+        ...(normalizedTitle ? { title: normalizedTitle } : {})
+      });
     }
 
     saveBookmarks(bookmarks);
@@ -126,11 +153,12 @@
   }
 
   function beginEditingBookmark(bookmark: Bookmark) {
-    if (!(urlInput instanceof HTMLInputElement)) {
+    if (!(urlInput instanceof HTMLInputElement) || !(titleInput instanceof HTMLInputElement)) {
       return;
     }
 
     editingSlug = bookmark.slug;
+    titleInput.value = bookmark.title ?? '';
     urlInput.value = bookmark.url;
     urlInput.focus();
 
@@ -168,6 +196,12 @@
     for (const bookmark of nextBookmarks) {
       const row = document.createElement('li');
       row.className = 'bookmark';
+
+      const title = bookmark.title?.trim();
+      const titleText = document.createElement('span');
+      titleText.className = 'bookmark-title';
+      titleText.textContent = title ?? 'Untitled';
+      titleText.title = title ?? bookmark.url;
 
       const urlLink = document.createElement('a');
       urlLink.className = 'url';
@@ -211,7 +245,11 @@
         }
       });
 
-      row.append(urlLink, separator, slug, editButton, copyButton);
+      if (title) {
+        row.append(titleText, separator, urlLink, separator.cloneNode(true), slug, editButton, copyButton);
+      } else {
+        row.append(urlLink, separator, slug, editButton, copyButton);
+      }
       bookmarkList.append(row);
     }
 
