@@ -98,7 +98,8 @@
   function loadBookmarks() {
     try {
       return parseStoredBookmarks(localStorage.getItem(BOOKMARKS_STORAGE_KEY));
-    } catch {
+    } catch (error) {
+      console.warn('Unable to load bookmarks from localStorage.', error);
       return [];
     }
   }
@@ -106,8 +107,8 @@
   function saveBookmarks(nextBookmarks) {
     try {
       localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(nextBookmarks));
-    } catch {
-      // Ignore write errors to keep the UI responsive (e.g. private mode or quota).
+    } catch (error) {
+      console.warn('Unable to save bookmarks to localStorage.', error);
     }
   }
 
@@ -137,7 +138,24 @@
       slug.textContent = bookmark.slug;
       slug.setAttribute('aria-label', formatBookmarkEntry(bookmark));
 
-      row.append(urlLink, separator, slug);
+      const copyButton = document.createElement('button');
+      copyButton.type = 'button';
+      copyButton.className = 'copy';
+      copyButton.textContent = 'Copy';
+      copyButton.setAttribute('aria-label', `Copy ${bookmark.slug}`);
+      copyButton.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(bookmark.slug);
+          copyButton.textContent = 'Copied';
+          setTimeout(() => {
+            copyButton.textContent = 'Copy';
+          }, 1200);
+        } catch (error) {
+          console.warn('Unable to copy bookmark slug.', error);
+        }
+      });
+
+      row.append(urlLink, separator, slug, copyButton);
       bookmarkList.append(row);
     }
 

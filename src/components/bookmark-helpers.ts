@@ -7,7 +7,7 @@ export type Bookmark = {
 
 const BASE62_ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const URL_SCHEME = /^[a-zA-Z][a-zA-Z\d+.-]*:/;
-const BOOKMARK_SLUG_PATTERN = /^mona-[0-9A-Za-z]+$/;
+const BOOKMARK_SLUG_PATTERN = /^mona-[0-9A-Za-z]{4}$/;
 
 export function normalizeBookmarkUrl(rawInput: string): string | null {
   const trimmed = rawInput.trim();

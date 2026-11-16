@@ -31,6 +31,7 @@ describe('parseStoredBookmarks', () => {
     const storedValue = JSON.stringify([
       { url: 'www.example.com', slug: 'mona-7fk2' },
       { url: 'not a url', slug: 'mona-1a2b' },
+      { url: 'https://example.net', slug: 'mona-abc' },
       { url: 'https://example.com', slug: 'invalid-slug' },
       { url: 123, slug: 'mona-0000' }
     ]);
