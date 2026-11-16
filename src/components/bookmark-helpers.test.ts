@@ -26,6 +26,17 @@ describe('parseStoredBookmarks', () => {
       expect(parseStoredBookmarks(value)).toEqual([]);
     }
   });
+
+  it('drops malformed entries and keeps only validated bookmarks', () => {
+    const storedValue = JSON.stringify([
+      { url: 'www.example.com', slug: 'mona-7fk2' },
+      { url: 'not a url', slug: 'mona-1a2b' },
+      { url: 'https://example.com', slug: 'invalid-slug' },
+      { url: 123, slug: 'mona-0000' }
+    ]);
+
+    expect(parseStoredBookmarks(storedValue)).toEqual([{ url: 'https://www.example.com/', slug: 'mona-7fk2' }]);
+  });
 });
 
 describe('formatBookmarkEntry', () => {

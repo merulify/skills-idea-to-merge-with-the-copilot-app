@@ -7,6 +7,7 @@ export type Bookmark = {
 
 const BASE62_ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const URL_SCHEME = /^[a-zA-Z][a-zA-Z\d+.-]*:/;
+const BOOKMARK_SLUG_PATTERN = /^mona-[0-9A-Za-z]+$/;
 
 export function normalizeBookmarkUrl(rawInput: string): string | null {
   const trimmed = rawInput.trim();
@@ -29,7 +30,12 @@ function isBookmarkRecord(value: unknown): value is Bookmark {
   }
 
   const candidate = value as Partial<Bookmark>;
-  return typeof candidate.url === 'string' && typeof candidate.slug === 'string';
+  return (
+    typeof candidate.url === 'string' &&
+    typeof candidate.slug === 'string' &&
+    candidate.slug.length > 0 &&
+    BOOKMARK_SLUG_PATTERN.test(candidate.slug)
+  );
 }
 
 export function parseStoredBookmarks(storedValue: string | null): Bookmark[] {
@@ -43,9 +49,20 @@ export function parseStoredBookmarks(storedValue: string | null): Bookmark[] {
       return [];
     }
 
-    return parsed
-      .filter((entry): entry is Bookmark => isBookmarkRecord(entry))
-      .map((entry) => ({ url: entry.url, slug: entry.slug }));
+    const bookmarks: Bookmark[] = [];
+    for (const entry of parsed) {
+      if (!isBookmarkRecord(entry)) {
+        continue;
+      }
+
+      const normalizedUrl = normalizeBookmarkUrl(entry.url);
+      if (!normalizedUrl) {
+        continue;
+      }
+
+      bookmarks.push({ url: normalizedUrl, slug: entry.slug });
+    }
+    return bookmarks;
   } catch {
     return [];
   }
